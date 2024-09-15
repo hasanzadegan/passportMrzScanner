@@ -1,25 +1,25 @@
-# MRZ Detection and OCR API
+# Passport MRZ Scanner
 
-This project is a Flask-based web service for detecting Machine Readable Zones (MRZ) in images and extracting text using Tesseract OCR. The service is designed to process images, detect MRZ regions, and provide OCR results in a structured JSON format.
+This project provides a Flask-based web service for detecting Machine Readable Zones (MRZ) in passport and ID card images and extracting text using Tesseract OCR. It processes images to detect MRZ regions and uses a custom-trained Tesseract model for accurate text extraction.
 
 ## Features
 
-- **Image Processing:** Enhances image quality through resizing, grayscale conversion, and morphological operations.
-- **MRZ Detection:** Identifies and extracts MRZ regions from images, specifically tailored for passport and ID document scanning.
-- **OCR Integration:** Leverages Tesseract OCR with a custom-trained model (`mrz.traineddata`) for precise MRZ text extraction.
-- **API Endpoint:** Offers a RESTful API endpoint for uploading images and receiving processed results.
+- **Image Processing:** Resizes, converts images to grayscale, and applies morphological operations for enhanced quality.
+- **MRZ Detection:** Detects MRZ regions in passport and ID card images.
+- **OCR Integration:** Utilizes Tesseract OCR with a custom-trained model (`mrz.traineddata`) for precise MRZ text extraction.
+- **API Endpoint:** Provides a RESTful API for uploading images and receiving processed results.
 
 ## Requirements
 
-- **Python 3.x**: Ensure you have Python 3.x installed on your system.
-- **Flask**: A lightweight WSGI web application framework.
-- **OpenCV**: A library for computer vision tasks.
-- **NumPy**: A library for numerical operations in Python.
-- **Tesseract OCR**: An open-source OCR engine used for text extraction.
+- **Python 3.x**: [Download Python](https://www.python.org/downloads/)
+- **Flask**: A lightweight WSGI web application framework. [Flask Documentation](https://flask.palletsprojects.com/)
+- **OpenCV**: A library for computer vision tasks. [OpenCV Documentation](https://docs.opencv.org/)
+- **NumPy**: A library for numerical operations in Python. [NumPy Documentation](https://numpy.org/doc/)
+- **Tesseract OCR**: An open-source OCR engine used for text extraction. [Tesseract GitHub Releases](https://github.com/tesseract-ocr/tesseract)
 
 ## Installation
 
 1. **Clone the Repository:**
    ```bash
-   git clone https://github.com/your-username/your-repository.git
-   cd your-repository
+   git clone https://github.com/hasanzadegan/passportMrzScanner.git
+   cd passportMrzScanner
