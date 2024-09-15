@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Processing</title>
+</head>
+<body>
+<form id="upload-form" enctype="multipart/form-data">
+    <label for="image">Select image:</label>
+    <input type="file" id="image" name="image" accept="image/*" required>
+    <br><br>
+    <input type="hidden" id="line_number" name="line_number" value="0">
+    <br><br>
+    <button type="submit">Upload and Process</button>
+</form>
+<br>
+<div id="result"></div>
+<div id="image-preview" style="width:500px"></div>
+
+<script>
+    document.getElementById('upload-form').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const formData = new FormData(this);
+        const resultDiv = document.getElementById('result');
+        const imagePreviewDiv = document.getElementById('image-preview');
+        resultDiv.innerHTML = ''; // Clear previous results
+        imagePreviewDiv.innerHTML = ''; // Clear previous preview
+        let attemptCount = 0;
+        let passportNumberFound = false;
+
+        // Recursive function to process image with different line numbers
+        async function processImage(lineNumber) {
+            if (lineNumber > 5 || passportNumberFound) {
+                resultDiv.innerHTML += `<p>Number of attempts: ${attemptCount}</p>`;
+                return;
+            }
+
+            attemptCount++;
+
+            // Update the line_number in formData
+            formData.set('line_number', lineNumber);
+
+            try {
+                const response = await fetch('/process-image', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                console.log("result.mrz",result.mrz)
+                if (result.mrz.passport_number) {
+                    passportNumberFound = true;
+                    // Display the MRZ if passport number is found
+                    resultDiv.innerHTML = `<h2>MRZ Detected</h2><pre>${JSON.stringify(result.mrz, null, 2)}</pre>`;
+                }
+
+                // Display the base64 image if available
+                if (result.base64) {
+                    const imgElement = document.createElement('img');
+                    imgElement.src = `data:image/jpeg;base64,${result.base64}`;
+                    imgElement.alt = 'Processed Image';
+                    imgElement.style.maxWidth = '100%'; // Adjust based on your layout
+                    imgElement.style.height = 'auto';   // Maintain aspect ratio
+                    imagePreviewDiv.innerHTML = `<h2>Processed Image</h2>`;
+                    imagePreviewDiv.appendChild(imgElement);
+                }
+
+                // Recursive call to process the next line number
+                if (!passportNumberFound) {
+                    processImage(lineNumber + 1);
+                }
+
+            } catch (error) {
+                // Continue to next attempt even if there is an error
+                processImage(lineNumber + 1);
+            }
+        }
+
+        // Start processing with line number 0
+        processImage(0);
+    });
+</script>
+</body>
+</html>
