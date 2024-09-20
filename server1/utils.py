@@ -98,7 +98,7 @@ def apply_erosion(image, kernel_size=(3, 3), iterations=1):
     """Apply erosion to reduce noise in the image."""
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, kernel_size)
     eroded_image = cv2.erode(image, kernel, iterations=iterations)
-    cv2.imwrite(f"./uploads/eroded_{uuid.uuid4()}.jpeg", eroded_image)
+    cv2.imwrite(f"./uploads/eroded.jpeg", eroded_image)
 
     return eroded_image
 
@@ -178,7 +178,6 @@ def correct_passport_number(passport_number):
     # Replace any non-alphanumeric characters with an empty string
     passport_number = ''.join(c for c in passport_number if c.isalnum())
 
-    # Replace the first character if it's a digit
     if passport_number and passport_number[0].isdigit():
         passport_number = numberToLetter(passport_number[0]) + passport_number[1:]
 
@@ -269,7 +268,7 @@ def process_contours(eroded_image, image, min_y_position, min_width):
             else:
                 final_cropped_image = rotated_image
 
-            cv2.imwrite(f"./uploads/final_cropped_{uuid.uuid4()}.jpeg", final_cropped_image)
+            cv2.imwrite(f"./uploads/final_cropped.jpeg", final_cropped_image)
 
 
             return final_cropped_image
