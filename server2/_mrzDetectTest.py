@@ -25,7 +25,7 @@ def process_images_in_directory(input_directory):
 
                 # Check if there's a passport number in the result
                 passport_number = result.get('mrz', {}).get('passport_number', None)
-
+                
                 cv2.imwrite(f"output/result/{passport_number}.jpg", cropped_image)
 
 

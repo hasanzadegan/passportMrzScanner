@@ -12,6 +12,9 @@ def pad_line(line, length):
 
 def correct_passport_number(passport_number):
     passport_number = passport_number.strip().replace("<", "")
+
+    # if passport_number and passport_number[0].isdigit():
+    #    passport_number = null
     return passport_number
 
 def convert_dob(dob):

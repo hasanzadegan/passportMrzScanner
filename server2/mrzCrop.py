@@ -35,7 +35,7 @@ def clean_image(image):
     gray_image2 = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     binary_image2 = cv2.adaptiveThreshold(
         gray_image2,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY,15,7)
+        cv2.THRESH_BINARY,11,5)
 
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))  # You can adjust the kernel size
     cleaned_image = cv2.morphologyEx(binary_image2, cv2.MORPH_OPEN, kernel)
