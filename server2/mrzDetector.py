@@ -1,9 +1,13 @@
 import cv2
 import pytesseract
 import base64
+import uuid
+import subprocess
+import os
 
 def pad_line(line, length):
-    """Pad the line to the specified length with spaces."""
+    if len(line) > 44:
+        line = line.replace(' ','')
     return line.ljust(length)
 
 def correct_passport_number(passport_number):
@@ -19,28 +23,49 @@ def encode_image_to_base64(image):
     _, buffer = cv2.imencode('.jpg', image)
     return base64.b64encode(buffer).decode('utf-8')
 
+def getMRZ(image):
+    file_name = f"{uuid.uuid4()}.jpg"
+    cv2.imwrite(file_name, image)
+
+    try:
+        result = subprocess.check_output(
+            ['tesseract', file_name, 'stdout', '--psm', '6', '-l', 'mrz'],
+            stderr=subprocess.STDOUT
+        ).decode('utf-8').strip()
+    except subprocess.CalledProcessError as e:
+        result = None
+    finally:
+        if os.path.exists(file_name):
+            os.remove(file_name)
+
+    return result
+
+
 def perform_ocr(image):
     """Perform OCR on the provided image and extract MRZ fields."""
     try:
-        text = pytesseract.image_to_string(image, lang='mrz', config='--psm 6').strip()
-        text = text.replace(' ', '')
+        # text = pytesseract.image_to_string(image, lang='mrz', config='--psm 6').strip()
+        text = getMRZ(image)
         # print("text",text)
+        text = text.replace('\r', '')
 
         if text:
             # Replace new lines with spaces and split into words
-            lines = text.replace('\n', ' ').split(' ')
+            lines = text.split('\n')
             # Filter lines longer than 35 characters
+            filtered_lines = [line.strip() for line in lines if len(line.strip()) > 35]
+            filtered_lines = filtered_lines[-2:]
 
-            if len(lines) >= 2:
-                line1 = pad_line(lines[0], 44)
-                line2 = pad_line(lines[1], 44)
+            if len(filtered_lines) >= 2:
+                line1 = pad_line(filtered_lines[0], 44)
+                line2 = pad_line(filtered_lines[1], 44)
 
-                '''
-                print("line1:", line1)
-                print("line1 length:", len(line1))
-                print("line2:", line2)
-                print("line2 length:", len(line2))
-                '''
+
+                # print("line1:", line1)
+                # print("line1 length:", len(line1))
+                # print("line2:", line2)
+                # print("line2 length:", len(line2))
+
 
                 if len(line1) == 44 and len(line2) == 44:
                     passport_number = correct_passport_number(line2[0:9].strip())

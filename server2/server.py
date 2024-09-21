@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, send_from_directory
 import os
 import cv2
 import numpy as np
-from mrzCrop import process_image
+from mrzCrop import process_image,clean_image
 from mrzDetector import perform_ocr
 
 app = Flask(__name__)
@@ -35,6 +35,10 @@ def process_image_endpoint():
 
         # Perform OCR on the cropped image
         mrz_json = perform_ocr(cropped_image)
+
+        if 'error' in mrz_json:
+            cleaned_image = clean_image(cropped_image)
+            mrz_json = perform_ocr(cleaned_image)
 
         return jsonify(mrz_json)
 

@@ -30,6 +30,21 @@ def crop_to_box(image, box):
 
     return image[y_min:y_max, x_min:x_max]
 
+
+def clean_image(image):
+    gray_image2 = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    binary_image2 = cv2.adaptiveThreshold(
+        gray_image2,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,15,7)
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))  # You can adjust the kernel size
+    cleaned_image = cv2.morphologyEx(binary_image2, cv2.MORPH_OPEN, kernel)
+
+    cv2.imwrite('output/clean_output.jpg', cleaned_image)
+
+    return cleaned_image
+
+
 def process_image(image):
     """Process the input image to detect and crop regions of interest."""
     output_file = 'output/crop_output.jpg'  # Adjust as needed
@@ -80,7 +95,7 @@ def process_image(image):
         aspect_ratio = width / float(height) if height != 0 else 0
         image_width = image.shape[1]
 
-        if aspect_ratio > 20 and width > 0.2 * image_width and height > 18:
+        if aspect_ratio > 25 and width > 0.25 * image_width and height > 18:
             valid_contours.append(contour)
 
         if aspect_ratio > 5 and width > 0.2 * image_width and height > 10:
@@ -126,6 +141,7 @@ def process_image(image):
         rotated_image = cv2.warpAffine(image, rotation_matrix, (image.shape[1], image.shape[0]))
         rotated_margin_box = cv2.transform(np.array([margin_box]), rotation_matrix)[0]
         cropped_rotated_image = crop_to_box(rotated_image, rotated_margin_box)
+
 
         # Ensure output directory exists
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
