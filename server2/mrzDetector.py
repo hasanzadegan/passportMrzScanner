@@ -5,17 +5,37 @@ import uuid
 import subprocess
 import os
 
-def pad_line(line, length):
+def pad_line1(line, length):
     if len(line) > 44:
-        line = line.replace(' ','')
+        line = line.replace(' ', '')
+        line = line[line.find('P<'):]  # Keep everything from "P<" onward
+        while len(line) > 44:
+            line = line[:line.rfind('<')]
     return line.ljust(length)
 
-def correct_passport_number(passport_number):
+
+def pad_line2(line, length):
+    if len(line) > 44:
+        line = line.replace(' ','')
+        while len(line) > 44:
+            line = line[:line.rfind('<')]
+
+    return line.ljust(length)
+
+
+
+def correct_passport_number(passport_number, stop_invalid=True):
     passport_number = passport_number.strip().replace("<", "")
 
-    # if passport_number and passport_number[0].isdigit():
-    #    passport_number = null
-    return passport_number
+    if stop_invalid and passport_number and passport_number[0].isdigit():
+        return None
+
+    replace_map = {'0': 'O', '1': 'I', '2': 'Z', '3': 'E', '4': 'A',
+                   '5': 'S', '6': 'G', '7': 'T', '8': 'B', '9': 'P'}
+
+    return replace_map.get(passport_number[0], passport_number[0]) + passport_number[1:] if passport_number else passport_number
+
+
 
 def convert_dob(dob):
     """Convert date of birth from YYMMDD to DD/MM/YYYY format."""
@@ -44,7 +64,7 @@ def getMRZ(image):
     return result
 
 
-def perform_ocr(image):
+def perform_ocr(image, stop_invalid=True):
     """Perform OCR on the provided image and extract MRZ fields."""
     try:
         # text = pytesseract.image_to_string(image, lang='mrz', config='--psm 6').strip()
@@ -60,18 +80,19 @@ def perform_ocr(image):
             filtered_lines = filtered_lines[-2:]
 
             if len(filtered_lines) >= 2:
-                line1 = pad_line(filtered_lines[0], 44)
-                line2 = pad_line(filtered_lines[1], 44)
+                line1 = pad_line1(filtered_lines[0], 44)
+                line2 = pad_line2(filtered_lines[1], 44)
 
 
-                # print("line1:", line1)
-                # print("line1 length:", len(line1))
-                # print("line2:", line2)
-                # print("line2 length:", len(line2))
-
+                '''
+                print("line1:", line1)
+                print("line1 length:", len(line1))
+                print("line2:", line2)
+                print("line2 length:", len(line2))
+                '''
 
                 if len(line1) == 44 and len(line2) == 44:
-                    passport_number = correct_passport_number(line2[0:9].strip())
+                    passport_number = correct_passport_number(line2[0:9].strip(),stop_invalid)
                     date_of_birth = convert_dob(line2[13:19].strip())
                     date_of_expire = convert_dob(line2[21:27].strip())
 

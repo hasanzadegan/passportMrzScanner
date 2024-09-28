@@ -1,8 +1,8 @@
 from flask import Flask, request, jsonify, send_from_directory
-import os
 import cv2
 import numpy as np
-from mrzCrop import process_image,clean_image
+import base64
+from mrzCrop import process_image, clean_image
 from mrzDetector import perform_ocr
 
 app = Flask(__name__)
@@ -14,35 +14,45 @@ def index():
 
 @app.route('/process-image', methods=['POST'])
 def process_image_endpoint():
-    if 'image' not in request.files:
-        return jsonify({'error': 'No image file provided'}), 400
+    if 'base64' not in request.form:
+        return jsonify({'error': 'No base64 string provided'}), 400
 
-    image_file = request.files['image']
+    base64_string = request.form['base64']
+    header, encoded = base64_string.split(',', 1)  # Split header from the actual base64
+    image_data = base64.b64decode(encoded)  # Decode the base64 string
+    np_array = np.frombuffer(image_data, np.uint8)  # Convert to numpy array
+    image = cv2.imdecode(np_array, cv2.IMREAD_COLOR)  # Decode the image
 
-    if image_file:
-        image_bytes = image_file.read()
-        np_array = np.frombuffer(image_bytes, np.uint8)
-        image = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
+    if image is None:
+        return jsonify({'error': 'Could not decode the base64 image'}), 400
 
-        if image is None:
-            return jsonify({'error': 'Could not decode the image'}), 400
+    # Process the image using the existing function
+    cropped_image = process_image(image,1)
 
-        # Process the image using the existing function
-        cropped_image = process_image(image)
+    if cropped_image is None:
+        return jsonify({'error': 'Image processing failed'}), 500
 
-        if cropped_image is None:
-            return jsonify({'error': 'Image processing failed'}), 500
+    # Perform OCR on the cropped image
+    mrz_json = perform_ocr(cropped_image, False)
+    passport_number = mrz_json.get('mrz', {}).get('passport_number', None)
 
-        # Perform OCR on the cropped image
-        mrz_json = perform_ocr(cropped_image)
+    if passport_number is None or 'error' in mrz_json:
+        cropped_image = clean_image(cropped_image,31,5)
+        mrz_json = perform_ocr(cropped_image, False)
 
-        if 'error' in mrz_json:
-            cleaned_image = clean_image(cropped_image)
-            mrz_json = perform_ocr(cleaned_image)
+    passport_number = mrz_json.get('mrz', {}).get('passport_number', None)
 
-        return jsonify(mrz_json)
+    p1 = passport_number[1] if passport_number is not None and len(passport_number) > 1 else 0
+    if passport_number is None or not p1.isdigit():
+        cropped_image = clean_image(cropped_image,11,5)
+        mrz_json = perform_ocr(cropped_image, False)
 
-    return jsonify({'error': 'Failed to process image'}), 500
+    # Encode cropped image to base64 for response
+    _, buffer = cv2.imencode('.jpg', cropped_image)
+    base64_cropped = base64.b64encode(buffer).decode('utf-8')
+    mrz_json['base64'] = base64_cropped
+
+    return jsonify(mrz_json)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

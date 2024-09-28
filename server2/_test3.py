@@ -17,8 +17,8 @@ if image is not None:
         255,
         cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY,
-        15,
-        7
+        31,
+        5
     )
 
     # Remove noise using morphological opening

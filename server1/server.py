@@ -40,10 +40,8 @@ def process_image_endpoint():
 
 
         if line_number == 0:
-            # Use the original image directly for OCR
             cropped_img = image
         else:
-            # Process image using the cropper module
             cropped_img = process_image(image, line_number)
 
         eroded_image = apply_processing(cropped_img)

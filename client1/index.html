@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MRZ Detection and Cropping with OCR</title>
+    <script src="https://docs.opencv.org/master/opencv.js" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.0/dist/tesseract.min.js"></script>
+    <style>
+        #canvasOutput, #canvasCropped {
+            border: 1px solid black;
+            margin-right: 20px;
+        }
+    </style>
+</head>
+<body>
+<h2>Upload an Image</h2>
+<input type="file" id="fileInput" accept="image/*">
+<br><br>
+<canvas id="canvasOutput"></canvas>
+<canvas id="canvasCropped"></canvas>
+<br>
+<button id="processImageBtn">Process Image</button>
+<button id="performOcrBtn">Perform OCR on Cropped Image</button>
+<p id="ocrResult">OCR Result: <span id="ocrText"></span></p>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const canvasOutput = document.getElementById('canvasOutput');
+    const ctxOutput = canvasOutput.getContext('2d');
+    const canvasCropped = document.getElementById('canvasCropped');
+    const ctxCropped = canvasCropped.getContext('2d');
+    const processImageBtn = document.getElementById('processImageBtn');
+    const performOcrBtn = document.getElementById('performOcrBtn');
+    const ocrText = document.getElementById('ocrText');
+    let src, dst, croppedMat;
+
+    // Load image from file input
+    fileInput.addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        const img = new Image();
+        const reader = new FileReader();
+
+        reader.onload = function (ev) {
+            img.src = ev.target.result;
+        };
+
+        img.onload = function () {
+            canvasOutput.width = img.width;
+            canvasOutput.height = img.height;
+            ctxOutput.drawImage(img, 0, 0, img.width, img.height);
+        };
+
+        if (file) {
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Process image (detect contours, filter, and crop based on conditions)
+    processImageBtn.addEventListener('click', function () {
+        src = cv.imread(canvasOutput);
+        dst = new cv.Mat();
+        let gray = new cv.Mat();
+        let blackhat = new cv.Mat();
+        let horizontalFiltered = new cv.Mat();
+        let closedImage = new cv.Mat();
+        let contours = new cv.MatVector();
+        let hierarchy = new cv.Mat();
+
+        // Convert image to grayscale
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+
+        // Apply blackhat morphology operation
+        let kernel = cv.Mat.ones(25, 75, cv.CV_8U);
+        cv.morphologyEx(gray, blackhat, cv.MORPH_BLACKHAT, kernel);
+
+        // Morphology open to highlight horizontal areas
+        let horizontalKernel = cv.Mat.ones(1, 1, cv.CV_8U);
+        cv.morphologyEx(blackhat, horizontalFiltered, cv.MORPH_OPEN, horizontalKernel);
+
+        // Morphology close to remove small gaps
+        let closeKernel = cv.Mat.ones(3, 30, cv.CV_8U);
+        cv.morphologyEx(horizontalFiltered, closedImage, cv.MORPH_CLOSE, closeKernel);
+
+        // Threshold to get a binary image
+        cv.threshold(closedImage, dst, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
+
+        // Find contours
+        cv.findContours(dst, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+        let mrzContours = [];
+        let imgWidth = src.cols;
+
+        // Filter contours based on aspect ratio and dimensions
+        for (let i = 0; i < contours.size(); i++) {
+            let contour = contours.get(i);
+            let rect = cv.minAreaRect(contour);
+            let box = cv.RotatedRect.points(rect);
+            let width = rect.size.width;
+            let height = rect.size.height;
+
+            if (width < height) {
+                let temp = width;
+                width = height;
+                height = temp;
+            }
+
+            let aspectRatio = width / height;
+
+            // Aspect ratio and size conditions (modify based on your criteria)
+            if (aspectRatio > 25 && width > 0.25 * imgWidth && height > 18) {
+                mrzContours.push(contour);
+            }
+        }
+
+        // If valid contours found, crop the image
+        if (mrzContours.length > 0) {
+            let rect = cv.boundingRect(mrzContours[0]);
+
+            // Crop the image using the bounding rectangle of the detected contour
+            croppedMat = src.roi(rect);
+
+            // Resize canvasCropped to fit the cropped image
+            canvasCropped.width = rect.width;
+            canvasCropped.height = rect.height;
+
+            // Convert croppedMat to ImageData and draw on canvasCropped
+            let croppedImgData = new ImageData(new Uint8ClampedArray(croppedMat.data), rect.width, rect.height);
+            ctxCropped.putImageData(croppedImgData, 0, 0);
+
+            // Clean up memory
+            rect.delete();
+        }
+
+        // Draw the contours on the original image in red for debugging
+        let color = new cv.Scalar(255, 0, 0, 255); // Red color for contours
+        cv.drawContours(src, contours, -1, color, 2);
+        cv.imshow('canvasOutput', src);
+
+        // Clean up memory
+        gray.delete(); blackhat.delete(); horizontalFiltered.delete();
+        closedImage.delete(); contours.delete(); hierarchy.delete();
+    });
+
+    // Perform OCR on the cropped image
+    performOcrBtn.addEventListener('click', function () {
+        const imgData = canvasCropped.toDataURL();
+        Tesseract.recognize(imgData, 'eng')
+            .then(({ data: { text } }) => {
+                ocrText.innerText = text;
+            })
+            .catch((err) => {
+                console.error("OCR Error: ", err);
+            });
+    });
+</script>
+</body>
+</html>

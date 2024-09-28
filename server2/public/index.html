@@ -7,24 +7,39 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
-            padding: 20px;
-            border: 1px solid #ccc;
+            margin: 10px;
+            padding: 10px;
             border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
         }
-        #upload-form {
-            margin-bottom: 20px;
+        #upload-area {
+            width: 100%;
+            height: 50vh;
+            border: 2px dashed #ccc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            background-color: #f3f3f3;
         }
-        #image-preview, #result {
-            margin-top: 20px;
+        #upload-area img {
+            max-width: calc(100% - 40px);
+            max-height: calc(100% - 40px);
+            object-fit: contain;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
         }
-        img {
-            max-width: 100%;
-            height: auto;
-        }
-        #original-image {
-            max-width: 200px; /* Smaller size for original image */
-            height: auto;
+        #upload-area span {
+            position: relative;
+            z-index: 2;
         }
         #progress {
             display: none;
@@ -40,90 +55,128 @@
             background-color: #4caf50;
             border-radius: 5px;
         }
+        #image-preview {
+            margin-top: 20px;
+            display: none;
+            position: relative;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        @keyframes fadeInFromLeft {
+            0% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        #checkmark {
+            position: absolute;
+            font-size: 48px; /* Adjust size as needed */
+            color: green;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 3; /* Ensure it's above other elements */
+            display: none; /* Hidden by default */
+            opacity: 0; /* Start hidden */
+            animation: fadeInFromLeft 1s forwards; /* Use the fade-in animation */
+        }
+
     </style>
 </head>
 <body>
-<form id="upload-form" enctype="multipart/form-data">
-    <label for="image">Select image:</label>
-    <input type="file" id="image" name="image" accept="image/*" required>
-    <br><br>
-    <button type="submit">Upload and Process</button>
-</form>
+<div id="upload-area">
+    <input type="file" id="image" name="image" accept="image/*" style="display: none;" required>
+    <img id="uploaded-image" style="display: none;" />
+    <span id="upload-prompt">Click to Upload Image</span> <!-- Added ID here -->
+    <div id="checkmark">✔️</div>
+</div>
 
-<div id="image-preview"></div>
 <div id="progress">
     <div id="progress-bar"></div>
 </div>
 <div id="result"></div>
 
 <script>
-    document.getElementById('upload-form').addEventListener('submit', async function(event) {
-        event.preventDefault();
+    document.getElementById('upload-area').addEventListener('click', () => {
+        document.getElementById('image').click();
+    });
 
-        const formData = new FormData(this);
+    document.getElementById('image').addEventListener('change', async function(event) {
+        const imageFile = this.files[0];
+        if (!imageFile) return;
+
         const resultDiv = document.getElementById('result');
+        const uploadedImage = document.getElementById('uploaded-image');
         const imagePreviewDiv = document.getElementById('image-preview');
         const progressDiv = document.getElementById('progress');
         const progressBar = document.getElementById('progress-bar');
-        resultDiv.innerHTML = ''; // Clear previous results
-        imagePreviewDiv.innerHTML = ''; // Clear previous preview
-        progressBar.style.width = '0%'; // Reset progress bar
-        progressDiv.style.display = 'block'; // Show progress bar
+        const checkmark = document.getElementById('checkmark');
+        const uploadPrompt = document.getElementById('upload-prompt'); // Get the upload prompt
 
-        // Show original image
-        const imageFile = formData.get('image');
-        const imageURL = URL.createObjectURL(imageFile);
-        const imgElement = document.createElement('img');
-        imgElement.src = imageURL;
-        imgElement.alt = 'Original Image';
-        imgElement.id = 'original-image';
-        imagePreviewDiv.innerHTML = `<h2>Original Image</h2>`;
-        imagePreviewDiv.appendChild(imgElement);
+        resultDiv.innerHTML = '';
+        uploadedImage.style.display = 'none'; // Hide uploaded image initially
+        progressBar.style.width = '0%';
+        progressDiv.style.display = 'block';
 
-        // Function to process image
-        async function processImage() {
-            try {
-                const response = await fetch('/process-image', {
-                    method: 'POST',
-                    body: formData
-                });
+        const reader = new FileReader();
+        reader.onload = async function(event) {
+            const base64String = event.target.result;
 
-                const result = await response.json();
+            // Set the uploaded image source
+            uploadedImage.src = base64String;
+            uploadedImage.style.display = 'block'; // Show the uploaded image
 
-                if (result.mrz && result.mrz.passport_number) {
-                    // Display the MRZ if passport number is found
-                    resultDiv.innerHTML += `<h2>MRZ Detected</h2><pre>${JSON.stringify(result.mrz, null, 2)}</pre>`;
+            async function processImage() {
+                uploadPrompt.style.display = 'none'; // Hide the span
+                try {
+                    const response = await fetch('/process-image', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `base64=${encodeURIComponent(base64String)}`
+                    });
+
+                    const result = await response.json();
+
+                    if (result.mrz && result.mrz.passport_number) {
+                        resultDiv.innerHTML += `<pre>${JSON.stringify(result.mrz, null, 2)}</pre>`;
+                        checkmark.style.display = 'block'; // Show the checkbox
+                    }
+
+                    if (result.base64) {
+                        const croppedImgElement = document.createElement('img');
+                        croppedImgElement.src = `data:image/jpeg;base64,${result.base64}`;
+                        croppedImgElement.alt = 'Cropped Processed Image';
+                        croppedImgElement.style.maxWidth = '100%'; // Responsive cropped image
+                        imagePreviewDiv.appendChild(croppedImgElement);
+                    }
+
+                } catch (error) {
+                    console.error('Error processing image:', error);
+                } finally {
+                    progressDiv.style.display = 'none';
                 }
+            }
 
-                // Display the base64 image if available
-                if (result.base64) {
-                    const croppedImgElement = document.createElement('img');
-                    croppedImgElement.src = `data:image/jpeg;base64,${result.base64}`;
-                    croppedImgElement.alt = 'Cropped Processed Image';
-                    imagePreviewDiv.innerHTML += `<h2>Cropped Processed Image</h2>`;
-                    imagePreviewDiv.appendChild(croppedImgElement);
+            const interval = setInterval(() => {
+                const currentWidth = parseInt(progressBar.style.width);
+                if (currentWidth < 100) {
+                    progressBar.style.width = `${currentWidth + 10}%`;
                 }
+            }, 100);
 
-            } catch (error) {
-                console.error('Error processing image:', error);
-            } finally {
-                progressDiv.style.display = 'none'; // Hide progress bar
-            }
-        }
+            await processImage();
+            clearInterval(interval);
+            progressBar.style.width = '100%';
+        };
 
-        // Process the image with a simulated progress bar
-        const interval = setInterval(() => {
-            const currentWidth = parseInt(progressBar.style.width);
-            if (currentWidth < 100) {
-                progressBar.style.width = `${currentWidth + 10}%`;
-            }
-        }, 100);
-
-        // Call the processImage function
-        processImage().finally(() => {
-            clearInterval(interval); // Clear the progress interval
-            progressBar.style.width = '100%'; // Ensure progress bar fills up
-        });
+        reader.readAsDataURL(imageFile);
     });
 </script>
 </body>
