@@ -35,13 +35,13 @@ def process_image_endpoint():
     # Perform OCR on the cropped image
     mrz_json = perform_ocr(cropped_image, False)
     passport_number = mrz_json.get('mrz', {}).get('passport_number', None)
+    document_type = mrz_json.get('mrz', {}).get('document_type', None)
 
-    if passport_number is None or 'error' in mrz_json:
+    if passport_number is None or 'error' in mrz_json or document_type != 'P':
         cropped_image = clean_image(cropped_image,31,5)
         mrz_json = perform_ocr(cropped_image, False)
 
     passport_number = mrz_json.get('mrz', {}).get('passport_number', None)
-
     p1 = passport_number[1] if passport_number is not None and len(passport_number) > 1 else 0
     if passport_number is None or not p1.isdigit():
         cropped_image = clean_image(cropped_image,11,5)

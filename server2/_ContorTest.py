@@ -38,7 +38,7 @@ def process_images_in_directory(input_directory):
                 if passport_number:
                     print(f"--- {filename} ------- {passport_number}")
                 else:
-                    print(f"--- {filename} ------- No passport number detected.")
+                    print(f"--- {filename} ------- No passport number detected.{passport_number}")
 
 if __name__ == "__main__":
     input_directory = '../img'

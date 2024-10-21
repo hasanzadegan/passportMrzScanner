@@ -8,7 +8,7 @@ import os
 def pad_line1(line, length):
     if len(line) > 44:
         line = line.replace(' ', '')
-        line = line[line.find('P<'):]  # Keep everything from "P<" onward
+        line = line[line.find('P'):]  # Keep everything from "P<" onward
         while len(line) > 44:
             line = line[:line.rfind('<')]
     return line.ljust(length)
@@ -80,11 +80,13 @@ def perform_ocr(image, stop_invalid=True):
             filtered_lines = filtered_lines[-2:]
 
             if len(filtered_lines) >= 2:
+
                 line1 = pad_line1(filtered_lines[0], 44)
                 line2 = pad_line2(filtered_lines[1], 44)
 
 
                 '''
+                print("filtered_lines[0]:", filtered_lines[0])
                 print("line1:", line1)
                 print("line1 length:", len(line1))
                 print("line2:", line2)
@@ -97,7 +99,7 @@ def perform_ocr(image, stop_invalid=True):
                     date_of_expire = convert_dob(line2[21:27].strip())
 
                     mrz_fields = {
-                        'document_type': line1[0],
+                        'document_type': line1[0:2].replace('<',''),
                         'country_code': line1[2:5],
                         'last_name': line1[5:44].split('<')[0].strip(),
                         'middle_name': line1[5:44].split('<')[1].strip() if '<' in line1[5:44] else '',

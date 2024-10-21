@@ -28,7 +28,9 @@ def process_images_in_directory(input_directory):
                 mrz_json = perform_ocr(cropped_image)
 
                 passport_number = mrz_json.get('mrz', {}).get('passport_number', None)
-                if passport_number is None or 'error' in mrz_json:
+                document_type = mrz_json.get('mrz', {}).get('document_type', None)
+
+                if passport_number is None or 'error' in mrz_json or document_type != 'P':
                     cropped_image = clean_image(cropped_image, 31, 5)
                     mrz_json = perform_ocr(cropped_image, False)
 
@@ -39,7 +41,6 @@ def process_images_in_directory(input_directory):
                     cropped_image = clean_image(cropped_image, 11, 5)
                     mrz_json = perform_ocr(cropped_image, False)
 
-
                 line1 = mrz_json.get('line1', None)
                 l1 = line1[0] if line1 is not None and len(line1) > 1 else ' '
 
@@ -48,7 +49,7 @@ def process_images_in_directory(input_directory):
                     print(f"--- {filename} ------- {passport_number} --- {line1[0]}")
                     cv2.imwrite(f"output/result/detected/{passport_number}-{filename}.jpg", cropped_image)
                 else:
-                    print(f"--- {filename} ------- No passport number detected.", l1 == 'P')
+                    print(f"--- {filename} ------- No passport number detected.")
                     cv2.imwrite(f"output/result/not_detected/{passport_number}-{filename}.jpg", cropped_image)
 
 
